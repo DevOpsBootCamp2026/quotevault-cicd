@@ -1,0 +1,64 @@
+name: CI
+
+on:
+    push:
+        branches: [ main ]
+    pull_request:
+        branches: [ main ]
+
+jobs: 
+    lint:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: 3.11
+            - run: pip install -r requirements-dev.txt
+
+    unit-tests:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: 3.11
+            - run: pip install -r requirements-dev.txt
+            - run: pytest tests/unit -q
+    
+    api-tests:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: 3.11
+            - run: pip install -r requirements.txt -r requirements-dev.txt
+            - run: pytest tests/api -q
+
+    docker-build:
+        needs: [unit-tests, api-tests]
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: build image
+              run: docker build -t quote-api:ci .
+            - name: run container
+              run: docker run -d --name quotvault -p 8000:8000 quote-api:ci
+            - name: smoke test /health 
+              run: |
+                for i in $(seq 1 10); do
+                    if curl -s http://localhost:8000/health | grep "OK"; then
+                        echo "Health check passed"
+                        exit 0
+                    else
+                        echo "Health check failed, retrying..."
+                        sleep 5
+                    fi
+                done
+
+            - name: cleanup
+              if: always()
+              run: docker rm -f quotvault || ture 
+    
+
