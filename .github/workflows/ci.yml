@@ -3,7 +3,9 @@ name: CI
 on:
     push:
         branches: [ main ]
+        tags: ['**']
     pull_request:
+        tags: [ '**' ]
         branches: [ main ]
 
 jobs: 
@@ -18,7 +20,7 @@ jobs:
 
     unit-tests:
         needs: [lint]
-        runs-on: self-hosted
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-python@v4
@@ -29,7 +31,7 @@ jobs:
     
     api-tests:
         needs: [lint]
-        runs-on: self-hosted
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-python@v4
