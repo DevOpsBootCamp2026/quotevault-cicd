@@ -5,7 +5,7 @@ on:
     workflows: ["CI"]
     types:
       - completed
-    branches: [main]
+
 
 permissions:
     contents: read
@@ -44,12 +44,16 @@ jobs:
     release:
         needs: publish
         runs-on: ubuntu-latest
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.event.workflow_run.head_branch, 'v')
         permissions:
             contents: write
         steps:
             - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event.workflow_run.head_sha }}
+
             - uses: softprops/action-gh-release@v2
               with:
+                  tag_name: ${{ github.event.workflow_run.head_branch }}
                   generate_release_notes: true
 
