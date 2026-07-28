@@ -8,7 +8,7 @@ on:
 
 jobs: 
     lint:
-        runs-on: self-hosted
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-python@v4
@@ -17,7 +17,8 @@ jobs:
             - run: pip install -r requirements-dev.txt
 
     unit-tests:
-        runs-on: self-hosted
+        needs: [lint]
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-python@v4
@@ -27,7 +28,8 @@ jobs:
             - run: pytest tests/unit -q
     
     api-tests:
-        runs-on: self-hosted
+        needs: [lint]
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-python@v4
@@ -38,7 +40,7 @@ jobs:
 
     docker-build:
         needs: [unit-tests, api-tests]
-        runs-on: self-hosted
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
             - name: build image
