@@ -1,9 +1,10 @@
 name: CD - Publish iamge 
 
 on:
-    push:
-        branches: [ main ]
-        tags: [v*.*.*]
+    workflow_run:
+        workflows: [CI]
+        types: [completed]
+        branches: [main]
 
 permissions:
     contents: read
