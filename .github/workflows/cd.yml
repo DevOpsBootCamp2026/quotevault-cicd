@@ -5,9 +5,7 @@ on:
     workflows: ["CI"]
     types:
       - completed
-  push:
-        branches: [ main ]
-        tags: [v*.*.*]
+    branches: [main]
 
 permissions:
     contents: read
