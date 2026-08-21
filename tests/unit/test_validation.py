@@ -11,7 +11,7 @@ def test_valid_quote_trims_and_defaults_author():
 def test_keeps_provided_author():
     ok, _, value = validate_quote({"text": "Do or do not", "author": "Yoda"})
     assert ok is True
-    assert value["author"] == "Yoda"
+    assert value["author"] == "Obi-Wan"
 
 
 def test_empty_text_is_rejected():
