@@ -1,59 +1,76 @@
-name: CD - Publish iamge 
+name: CD
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
-
+    workflow_run:
+        workflows: [ CI ]
+        types: [ completed ]
 
 permissions:
     contents: read
     packages: write
 
+concurrency:
+    group: cd-${{ github.event.workflow_run.head_branch }}
+    cancel-in-progress: false
+
 jobs:
     publish:
-        if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+        if: >-
+            github.event.workflow_run.conclusion == 'success' &&
+            github.event.workflow_run.event == 'push' &&
+            (github.event.workflow_run.head_branch == github.event.repository.default_branch ||
+            startsWith(github.event.workflow_run.head_branch, 'v'))
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
-            - name: log in to github container registry
+            - uses: actions/checkout@v5
+              with:
+                  ref: ${{ github.event.workflow_run.head_sha }}
+
+            - name: Resolve short sha
+              id: sha
+              run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+            - name: Log in to GitHub Container Registry
               uses: docker/login-action@v3
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Docker_metadata
-              id: meta 
+            - name: Docker metadata
+              id: meta
               uses: docker/metadata-action@v5
-              with: 
-                images: ghcr.io/${{ github.repository }}
-                tags: |
-                    type=ref,event=branch
-                    type=sha
-                    type=semver,pattern={{version}}
-                    type=raw, value=latest, enabled={is_default_branch}
-            - name: buid and push
+              with:
+                  images: ghcr.io/${{ github.repository }}
+                  tags: |
+                      type=raw,value=${{ github.event.workflow_run.head_branch }}
+                      type=raw,value=sha-${{ steps.sha.outputs.short }}
+                      type=raw,value=latest,enable=${{ github.event.workflow_run.head_branch == github.event.repository.default_branch }}
+                      type=semver,pattern={{version}},value=${{ github.event.workflow_run.head_branch }},enable=${{ startsWith(github.event.workflow_run.head_branch, 'v') }}
+
+            - name: Build and push image
               uses: docker/build-push-action@v6
               with:
                   context: .
                   push: true
                   tags: ${{ steps.meta.outputs.tags }}
                   labels: ${{ steps.meta.outputs.labels }}
+
     release:
-        needs: publish
-        runs-on: ubuntu-latest
+        needs: [publish]
         if: startsWith(github.event.workflow_run.head_branch, 'v')
+        runs-on: ubuntu-latest
         permissions:
             contents: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
               with:
                   ref: ${{ github.event.workflow_run.head_sha }}
+                  fetch-depth: 0
 
-            - uses: softprops/action-gh-release@v2
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
               with:
                   tag_name: ${{ github.event.workflow_run.head_branch }}
+                  name: ${{ github.event.workflow_run.head_branch }}
                   generate_release_notes: true
-
